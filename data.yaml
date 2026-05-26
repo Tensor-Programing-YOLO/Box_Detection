@@ -1,0 +1,15 @@
+path: ./dataset
+train: images/train
+val: images/val
+
+# 클래스 수
+nc: 6
+
+# 최종 병합된 클래스 이름
+names:
+  0: box
+  1: normal_hole
+  2: crushed
+  3: tear
+  4: opened
+  5: contamination
