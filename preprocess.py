@@ -58,6 +58,7 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
 
     def process_subset(file_list, target_img_dir, target_lbl_dir, subset_name):
         processed_count = 0
+        skipped_count = 0
         for txt_file in file_list:
             # ---------------------------------------------
             # [1] 라벨 파일 전처리(클래스 변경/삭제) 및 저장
@@ -79,6 +80,12 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                     parts[0] = str(new_class_id)
                     new_lines.append(' '.join(parts) + '\n')
                 # 매핑에 없는 클래스(예: 병합, 삭제 대상)는 무시되어 저장되지 않음
+
+            # [1-1] 박스(class 0)가 2개 이상인 경우 제외
+            box_count = sum(1 for line in new_lines if line.split()[0] == '0')
+            if box_count >= 2:
+                skipped_count += 1
+                continue
 
             # ---------------------------------------------
             # [2] 대응되는 이미지 파일 찾아서 복사
@@ -108,7 +115,7 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
             else:
                 print(f"경고: {txt_file.name} 라벨에 대응하는 이미지를 찾을 수 없습니다. 건너뜁니다.")
             
-        print(f"[{subset_name}] 데이터 {processed_count}개 세팅 완료.")
+        print(f"[{subset_name}] 완료: {processed_count}개 생성 (박스 과다로 {skipped_count}개 제외)")
 
     # 5. 분할된 리스트를 바탕으로 처리 진행
     process_subset(train_files, train_img_dir, train_lbl_dir, "Train (80%)")
@@ -120,8 +127,8 @@ if __name__ == '__main__':
     # ---------------------------------------------------------
     # 작업 전, 아래 경로에 원본 데이터가 모두 모여있어야 합니다.
     # ---------------------------------------------------------
-    source_labels = base_dir / 'all_labels' # 원본 txt 파일들이 모두 모여있는 폴더
-    source_images = base_dir / 'all_images' # 원본 이미지 파일들이 모두 모여있는 폴더
+    source_labels = base_dir / 'dataset' / 'labels' # 원본 txt 파일들이 모두 모여있는 폴더
+    source_images = base_dir / 'dataset' / 'images' # 원본 이미지 파일들이 모두 모여있는 폴더
     output_dataset = base_dir / 'dataset'   # 최종 생성될 train/val 폴더의 최상위 경로
 
     print("전처리 및 데이터셋 분할(Train/Val) 파이프라인 시작...\n")
