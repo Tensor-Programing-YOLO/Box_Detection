@@ -118,26 +118,90 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
         print(f"[{subset_name}] 완료: {processed_count}개 생성 (박스 과다로 {skipped_count}개 제외)")
 
     # 5. 분할된 리스트를 바탕으로 처리 진행
+    dropped_classes = {}
+
+    def process_subset(file_list, target_img_dir, target_lbl_dir, subset_name):
+        processed_count = 0
+        skipped_count = 0
+        non_mapped_count = 0
+        
+        for txt_file in file_list:
+            with open(txt_file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            
+            new_lines = []
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                
+                parts = line.split()
+                class_id = int(parts[0])
+
+                if class_id in CLASS_MAPPING:
+                    new_class_id = CLASS_MAPPING[class_id]
+                    parts[0] = str(new_class_id)
+                    new_lines.append(' '.join(parts) + '\n')
+                else:
+                    dropped_classes[class_id] = dropped_classes.get(class_id, 0) + 1
+                    non_mapped_count += 1
+
+            box_count = sum(1 for line in new_lines if line.split()[0] == '0')
+            if box_count >= 2:
+                skipped_count += 1
+                continue
+
+            base_name = txt_file.stem
+            img_found = False
+            found_img_path = None
+            
+            for ext in img_extensions:
+                for actual_ext in [ext.lower(), ext.upper()]:
+                    img_candidate = all_images_path / (base_name + actual_ext)
+                    if img_candidate.exists():
+                        found_img_path = img_candidate
+                        img_found = True
+                        break
+                if img_found: break
+            
+            if img_found:
+                new_lbl_path = target_lbl_dir / txt_file.name
+                with open(new_lbl_path, 'w', encoding='utf-8') as f:
+                    f.writelines(new_lines)
+                
+                shutil.copy(found_img_path, target_img_dir / found_img_path.name)
+                processed_count += 1
+            else:
+                print(f"경고: {txt_file.name} 라벨에 대응하는 이미지를 찾을 수 없습니다.")
+            
+        print(f"[{subset_name}] 완료: {processed_count}개 생성 (박스 과다 {skipped_count}개 제외, 미매핑 클래스 {non_mapped_count}개 처리)")
+
     process_subset(train_files, train_img_dir, train_lbl_dir, "Train (80%)")
     process_subset(val_files, val_img_dir, val_lbl_dir, "Validation (20%)")
+
+    if dropped_classes:
+        print("\n[미매핑 클래스 요약]")
+        for cid, count in sorted(dropped_classes.items()):
+            print(f"- 원본 ID {cid}: {count}개 인스턴스 제외됨")
 
 if __name__ == '__main__':
     base_dir = Path(__file__).parent
     
-    # ---------------------------------------------------------
-    # 작업 전, 아래 경로에 원본 데이터가 모두 모여있어야 합니다.
-    # ---------------------------------------------------------
-    source_labels = base_dir / 'dataset' / 'labels' # 원본 txt 파일들이 모두 모여있는 폴더
-    source_images = base_dir / 'dataset' / 'images' # 원본 이미지 파일들이 모두 모여있는 폴더
-    output_dataset = base_dir / 'dataset'   # 최종 생성될 train/val 폴더의 최상위 경로
+    # 1순위: raw_dataset, 2순위: raw_data
+    source_base = base_dir / 'raw_dataset'
+    if not source_base.exists():
+        source_base = base_dir / 'raw_data'
 
-    print("전처리 및 데이터셋 분할(Train/Val) 파이프라인 시작...\n")
+    source_labels = source_base / 'labels'
+    source_images = source_base / 'images'
+    output_dataset = base_dir / 'dataset'
+
+    print(f"입력 경로: {source_base}")
+    print("전처리 및 데이터셋 분할 파이프라인 시작...\n")
     
     if not source_labels.exists():
         print(f"오류: 라벨 폴더({source_labels})가 존재하지 않습니다.")
     elif not source_images.exists():
         print(f"오류: 이미지 폴더({source_images})가 존재하지 않습니다.")
     else:
-        # 비율(split_ratio) 조절 시 0.8 부분을 변경하면 됩니다.
         process_and_split(source_images, source_labels, output_dataset, split_ratio=0.8)
-        print("\n모든 라벨 정제 및 Train/Val 이미지-라벨 복사가 완료되었습니다!")
+        print("\n모든 작업이 완료되었습니다!")
