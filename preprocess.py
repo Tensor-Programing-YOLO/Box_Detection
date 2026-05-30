@@ -9,12 +9,12 @@ from pathlib import Path
 # ==========================================
 # 원본 클래스 ID : 최종 변경될 클래스 ID
 CLASS_MAPPING = {
-    0: 0,   # 원본 box -> 0 (box)
-    1: 1,   # 원본 normal_hole -> 1 (normal_hole)
-    2: 2,   # 원본 crushed -> 2 (crushed)
-    3: 3,   # 원본 tear -> 3 (tear)
-    5: 4,   # 원본 opened -> 4 (opened)
-    7: 5    # 원본 contamination -> 5 (contamination)
+    0: 0,   # box
+    1: 1,   # normal_hole
+    2: 2,   # crushed
+    3: 3,   # tear
+    4: 4,   # opened
+    5: 5    # contamination
 }
 
 def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_ratio=0.8):
@@ -36,29 +36,32 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
     for d in [train_img_dir, val_img_dir, train_lbl_dir, val_lbl_dir]:
         d.mkdir(parents=True, exist_ok=True)
 
-    # 2. 전체 텍스트 파일(라벨) 목록 수집
-    txt_files = list(all_labels_path.glob('*.txt'))
+    # 2. 전체 텍스트 파일(라벨) 목록 수집 (classes.txt 제외)
+    txt_files = [f for f in all_labels_path.glob('*.txt') if f.name != 'classes.txt']
     if not txt_files:
-        print(f"[{all_labels_dir}] 폴더에 텍스트 파일이 없습니다.")
+        print(f"[{all_labels_dir}] 폴더에 처리할 텍스트 파일이 없습니다.")
         return
 
-    print(f"총 {len(txt_files)}개의 라벨 파일을 찾았습니다. 무작위 분할(8:2)을 시작합니다...")
+    print(f"총 {len(txt_files)}개의 라벨 파일을 찾았습니다. 무작위 분할({int(split_ratio*10)}:{int((1-split_ratio)*10)})을 시작합니다...")
     
     # 3. 무작위 섞기 (shuffle)
-    # 재현성을 원하시면 random.seed(42) 등을 추가하세요.
     random.shuffle(txt_files)
 
-    # 4. 8:2 비율 분할 계산
+    # 4. 분할 계산
     split_index = int(len(txt_files) * split_ratio)
     train_files = txt_files[:split_index]
     val_files = txt_files[split_index:]
 
-    # 이미지 파일 확장자 (원본 이미지가 어떤 확장자인지 모를 경우를 대비)
+    # 이미지 파일 확장자
     img_extensions = ['.jpg', '.jpeg', '.png', '.bmp']
+
+    dropped_classes = {}
 
     def process_subset(file_list, target_img_dir, target_lbl_dir, subset_name):
         processed_count = 0
         skipped_count = 0
+        non_mapped_count = 0
+        
         for txt_file in file_list:
             # ---------------------------------------------
             # [1] 라벨 파일 전처리(클래스 변경/삭제) 및 저장
@@ -73,13 +76,18 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                     continue
                 
                 parts = line.split()
-                class_id = int(parts[0])
+                try:
+                    class_id = int(parts[0])
+                except ValueError:
+                    continue
 
                 if class_id in CLASS_MAPPING:
                     new_class_id = CLASS_MAPPING[class_id]
                     parts[0] = str(new_class_id)
                     new_lines.append(' '.join(parts) + '\n')
-                # 매핑에 없는 클래스(예: 병합, 삭제 대상)는 무시되어 저장되지 않음
+                else:
+                    dropped_classes[class_id] = dropped_classes.get(class_id, 0) + 1
+                    non_mapped_count += 1
 
             # [1-1] 박스(class 0)가 2개 이상인 경우 제외
             box_count = sum(1 for line in new_lines if line.split()[0] == '0')
@@ -113,70 +121,14 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                 shutil.copy(found_img_path, target_img_dir / found_img_path.name)
                 processed_count += 1
             else:
-                print(f"경고: {txt_file.name} 라벨에 대응하는 이미지를 찾을 수 없습니다. 건너뜁니다.")
-            
-        print(f"[{subset_name}] 완료: {processed_count}개 생성 (박스 과다로 {skipped_count}개 제외)")
-
-    # 5. 분할된 리스트를 바탕으로 처리 진행
-    dropped_classes = {}
-
-    def process_subset(file_list, target_img_dir, target_lbl_dir, subset_name):
-        processed_count = 0
-        skipped_count = 0
-        non_mapped_count = 0
-        
-        for txt_file in file_list:
-            with open(txt_file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-            
-            new_lines = []
-            for line in lines:
-                line = line.strip()
-                if not line: continue
-                
-                parts = line.split()
-                class_id = int(parts[0])
-
-                if class_id in CLASS_MAPPING:
-                    new_class_id = CLASS_MAPPING[class_id]
-                    parts[0] = str(new_class_id)
-                    new_lines.append(' '.join(parts) + '\n')
-                else:
-                    dropped_classes[class_id] = dropped_classes.get(class_id, 0) + 1
-                    non_mapped_count += 1
-
-            box_count = sum(1 for line in new_lines if line.split()[0] == '0')
-            if box_count >= 2:
-                skipped_count += 1
-                continue
-
-            base_name = txt_file.stem
-            img_found = False
-            found_img_path = None
-            
-            for ext in img_extensions:
-                for actual_ext in [ext.lower(), ext.upper()]:
-                    img_candidate = all_images_path / (base_name + actual_ext)
-                    if img_candidate.exists():
-                        found_img_path = img_candidate
-                        img_found = True
-                        break
-                if img_found: break
-            
-            if img_found:
-                new_lbl_path = target_lbl_dir / txt_file.name
-                with open(new_lbl_path, 'w', encoding='utf-8') as f:
-                    f.writelines(new_lines)
-                
-                shutil.copy(found_img_path, target_img_dir / found_img_path.name)
-                processed_count += 1
-            else:
-                print(f"경고: {txt_file.name} 라벨에 대응하는 이미지를 찾을 수 없습니다.")
+                print(f"경고: {txt_file.name} 라벨에 대응하는 이미지를 찾을 수 없습니다. 건너뜜.")
             
         print(f"[{subset_name}] 완료: {processed_count}개 생성 (박스 과다 {skipped_count}개 제외, 미매핑 클래스 {non_mapped_count}개 처리)")
 
+    # 5. 분할된 리스트를 바탕으로 처리 진행
     process_subset(train_files, train_img_dir, train_lbl_dir, "Train (80%)")
     process_subset(val_files, val_img_dir, val_lbl_dir, "Validation (20%)")
+
 
     if dropped_classes:
         print("\n[미매핑 클래스 요약]")
