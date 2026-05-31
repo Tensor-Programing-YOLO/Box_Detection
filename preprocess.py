@@ -70,6 +70,7 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                 lines = f.readlines()
             
             new_lines = []
+            has_contamination = False
             for line in lines:
                 line = line.strip()
                 if not line:
@@ -81,6 +82,11 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                 except ValueError:
                     continue
 
+                # contamination(5) 클래스가 있으면 플래그 설정
+                if class_id == 5:
+                    has_contamination = True
+                    break
+
                 if class_id in CLASS_MAPPING:
                     new_class_id = CLASS_MAPPING[class_id]
                     parts[0] = str(new_class_id)
@@ -89,7 +95,12 @@ def process_and_split(all_images_dir, all_labels_dir, output_base_dir, split_rat
                     dropped_classes[class_id] = dropped_classes.get(class_id, 0) + 1
                     non_mapped_count += 1
 
-            # [1-1] 박스(class 0)가 2개 이상인 경우 제외
+            # [1-1] contamination이 포함된 경우 제외
+            if has_contamination:
+                skipped_count += 1
+                continue
+
+            # [1-2] 박스(class 0)가 2개 이상인 경우 제외
             box_count = sum(1 for line in new_lines if line.split()[0] == '0')
             if box_count >= 2:
                 skipped_count += 1

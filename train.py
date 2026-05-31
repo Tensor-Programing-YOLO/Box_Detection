@@ -7,10 +7,10 @@ from pathlib import Path
 # [1] USER CONFIGURATION (사용자 설정 변수)
 # ==============================================================================
 selected_weight = 'yolo11m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt, yolo11m.pt)
-epochs = 150                      # 학습 반복 횟수
+epochs = 150                         # 학습 반복 횟수
 batch_size = 16                    # 배치 사이즈
 img_size = 640                    # 입력 이미지 크기
-custom_tag = 'hsv_tuned'          # 실험 고유 태그 (폴더명에 포함됨)
+custom_tag = 'original'          # 실험 고유 태그 (폴더명에 포함됨)
 # ==============================================================================
 
 def main():
