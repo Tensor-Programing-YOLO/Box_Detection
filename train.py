@@ -29,7 +29,7 @@ def main():
     # 1. 모델 로드 및 학습
     model = YOLO(selected_weight)
     
-    model.train(
+    results = model.train(
         data='data.yaml',
         epochs=epochs,
         batch=batch_size,
@@ -43,11 +43,9 @@ def main():
     )
 
     # 2. 최적 가중치(best.pt) 자동 로드 및 검증 수행
-    # 실제 경로는 {project_dir}/{exp_path}/weights/best.pt 입니다. (예: results/yolo11m_150epoch_hsv_tuned/weights/best.pt)
-    # yolo 특성상 중간에 'detect' 등의 task 이름이 삽입될 수 있으므로 동적으로 찾습니다.
-    best_weights_path = Path(project_dir) / 'detect' / exp_path / 'weights' / 'best.pt'
-    if not best_weights_path.exists():
-        best_weights_path = Path(project_dir) / exp_path / 'weights' / 'best.pt' # 예외 처리
+    # model.train()의 결과 객체나 model.trainer에서 실제 저장 경로를 가져옵니다.
+    save_dir = Path(model.trainer.save_dir)
+    best_weights_path = save_dir / 'weights' / 'best.pt'
         
     if not best_weights_path.exists():
         print(f"Error: 최적 가중치 파일을 찾을 수 없습니다. ({best_weights_path})")
