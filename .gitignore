@@ -13,3 +13,9 @@ __pycache__/
 # OS Settings
 .DS_Store
 Thumbs.db
+
+# Model weights and training outputs
+*.pt
+runs/
+results/
+*.cache

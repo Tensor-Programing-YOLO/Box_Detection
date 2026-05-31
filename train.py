@@ -6,11 +6,11 @@ from pathlib import Path
 # ==============================================================================
 # [1] USER CONFIGURATION (사용자 설정 변수)
 # ==============================================================================
-selected_weight = 'yolo11m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt, yolo11m.pt)
+selected_weight = 'yolov10m.pt'    # YOLOv10 베이스 모델 가중치 (예: yolov10n.pt, yolov10m.pt)
 epochs = 150                      # 학습 반복 횟수
 batch_size = 16                    # 배치 사이즈
 img_size = 640                    # 입력 이미지 크기
-custom_tag = 'hsv_tuned'          # 실험 고유 태그 (폴더명에 포함됨)
+custom_tag = 'yolov10_hsv_tuned'  # 실험 고유 태그 (폴더명에 포함됨)
 # ==============================================================================
 
 def main():
@@ -43,7 +43,7 @@ def main():
     )
 
     # 2. 최적 가중치(best.pt) 자동 로드 및 검증 수행
-    # 실제 경로는 {project_dir}/{exp_path}/weights/best.pt 입니다. (예: results/yolo11m_150epoch_hsv_tuned/weights/best.pt)
+    # 실제 경로는 {project_dir}/{exp_path}/weights/best.pt 입니다. (예: results/yolov10m_150epoch_yolov10_hsv_tuned/weights/best.pt)
     # yolo 특성상 중간에 'detect' 등의 task 이름이 삽입될 수 있으므로 동적으로 찾습니다.
     best_weights_path = Path(project_dir) / 'detect' / exp_path / 'weights' / 'best.pt'
     if not best_weights_path.exists():

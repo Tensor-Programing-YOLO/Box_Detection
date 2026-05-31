@@ -204,7 +204,7 @@ def main(weights_path, image_path, conf_threshold=0.25, repackage_threshold=5.0)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="택배 파손 추론 및 재포장 판별 스크립트")
-    parser.add_argument('--weights', type=str, required=True, help='학습된 가중치 경로 (예: yolo11m.pt)')
+    parser.add_argument('--weights', type=str, required=True, help='학습된 가중치 경로 (예: yolov10m.pt 또는 results/.../weights/best.pt)')
     parser.add_argument('--img', type=str, required=True, help='테스트 이미지 경로')
     parser.add_argument('--conf', type=float, default=0.25, help='신뢰도 임계값 (기본값: 0.25)')
     parser.add_argument('--threshold', type=float, default=5.0, help='재포장 판별 면적 비율 임계값 (기본값: 5.0)')
