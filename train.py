@@ -10,7 +10,7 @@ selected_weight = 'yolo11m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt
 epochs = 150                         # 학습 반복 횟수
 batch_size = 16                    # 배치 사이즈
 img_size = 640                    # 입력 이미지 크기
-custom_tag = 'original'          # 실험 고유 태그 (폴더명에 포함됨)
+custom_tag = 'rainforced_data'          # 실험 고유 태그 (폴더명에 포함됨)
 # ==============================================================================
 
 def main():
@@ -35,6 +35,8 @@ def main():
         batch=batch_size,
         imgsz=img_size,
         device=device,
+        seed=42,             # PyTorch, Numpy, Python 랜덤 시드를 42로 통일
+        deterministic=True,
         project=project_dir,
         name=exp_path,
         exist_ok=True, # 기존 폴더 덮어쓰기 허용 (여러 번 실행 시 파일 추가 방지)

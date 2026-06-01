@@ -19,6 +19,8 @@ def preprocess_dataset():
 
     # 타겟 디렉토리 생성
     for d in dirs.values():
+        if d.exists():
+            shutil.rmtree(d)
         d.mkdir(parents=True, exist_ok=True)
 
     # 2. 수동 경계 설정 (새로운 상자가 시작되는 사진 번호)
@@ -62,26 +64,47 @@ def preprocess_dataset():
 
     def copy_files(selected_groups, img_target, lbl_target):
         count = 0
+        discard_count = 0
+        ignore_class_id = 5  # 'contamination' 클래스 ID
+        
         for g_id in selected_groups:
             for img_path in groups[g_id]:
+                lbl_path = raw_labels_dir / f"{img_path.stem}.txt"
+                
+                # contamination 클래스 포함 여부 확인
+                has_contamination = False
+                if lbl_path.exists():
+                    with open(lbl_path, 'r', encoding='utf-8') as f:
+                        for line in f:
+                            parts = line.strip().split()
+                            if parts and int(parts[0]) == ignore_class_id:
+                                has_contamination = True
+                                break
+                
+                # contamination이 있으면 해당 이미지/라벨 세트 전체를 버림
+                if has_contamination:
+                    discard_count += 1
+                    continue
+
                 # 이미지 복사
                 shutil.copy(img_path, img_target / img_path.name)
                 
-                # 라벨 복사 (.jpg -> .txt)
-                lbl_path = raw_labels_dir / f"{img_path.stem}.txt"
+                # 라벨 복사
                 if lbl_path.exists():
                     shutil.copy(lbl_path, lbl_target / lbl_path.name)
+                
                 count += 1
-        return count
+        return count, discard_count
 
     # 5. 파일 복사 실행
-    train_count = copy_files(train_groups, dirs["train_img"], dirs["train_lbl"])
-    val_count = copy_files(val_groups, dirs["val_img"], dirs["val_lbl"])
+    train_count, train_discard = copy_files(train_groups, dirs["train_img"], dirs["train_lbl"])
+    val_count, val_discard = copy_files(val_groups, dirs["val_img"], dirs["val_lbl"])
 
     # 결과 출력
     print(f"총 상자 그룹 수: {len(group_ids)}")
-    print(f"Train 이미지 수: {train_count}")
-    print(f"Val 이미지 수: {val_count}")
+    print(f"Train 이미지 수: {train_count} (버려진 사진: {train_discard})")
+    print(f"Val 이미지 수: {val_count} (버려진 사진: {val_discard})")
+    print(f"총 제외된 contamination 사진 수: {train_discard + val_discard}")
 
 if __name__ == "__main__":
     preprocess_dataset()
