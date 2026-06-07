@@ -6,11 +6,11 @@ from pathlib import Path
 # ==============================================================================
 # [1] USER CONFIGURATION (사용자 설정 변수)
 # ==============================================================================
-selected_weight = 'yolo11m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt, yolo11m.pt)
-epochs = 150                         # 학습 반복 횟수
+selected_weight = 'yolov8m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt, yolo11m.pt)
+epochs = 300                         # 학습 반복 횟수
 batch_size = 16                    # 배치 사이즈
 img_size = 640                    # 입력 이미지 크기
-custom_tag = 'rainforced_data'          # 실험 고유 태그 (폴더명에 포함됨)
+custom_tag = 'augmented_hypertuned'          # 실험 고유 태그 (폴더명에 포함됨)
 # ==============================================================================
 
 def main():
@@ -42,6 +42,8 @@ def main():
         exist_ok=True, # 기존 폴더 덮어쓰기 허용 (여러 번 실행 시 파일 추가 방지)
         # --- [물류 현장 최적화 하이퍼파라미터] ---
         # mosaic=1.0 등을 여기에 추가할 수 있습니다.
+        hsv_h=0.015, hsv_s=0.7, hsv_v=0.6,
+        # Focal Loss 감마 값 추가
     )
 
     # 2. 최적 가중치(best.pt) 자동 로드 및 검증 수행
