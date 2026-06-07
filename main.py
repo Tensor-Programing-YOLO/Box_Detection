@@ -6,11 +6,11 @@ import os
 
 # 클래스별 위험도 가중치 (ISTA 기반)
 CLASS_WEIGHTS = {
-    0: 0,   # box
-    1: 10,  # normal_hole
-    2: 30,  # crushed
-    3: 70,  # tear
-    4: 60,  # opened
+    0: 0,    # box
+    1: 0,    # normal_hole
+    2: 50,   # crushed
+    3: 90,   # tear
+    4: 100,  # opened
 }
 
 def calculate_area(box):
@@ -148,10 +148,10 @@ def main(weights_path, image_path, conf_threshold=0.25):
         damage_score = min(total_score, 100)
 
         # ── PASS / WARNING / REJECT 판정 ─────────────────────
-        if damage_score <= 30:
+        if damage_score <= 20:
             status = "PASS"
             color = (0, 200, 0)
-        elif damage_score <= 69:
+        elif damage_score <= 60:
             status = "WARNING"
             color = (0, 165, 255)
         else:
@@ -162,33 +162,30 @@ def main(weights_path, image_path, conf_threshold=0.25):
         cv2.rectangle(img, (bx1, by1), (bx2, by2), color, 3)
 
         label_text = f"Box {i+1} | Score: {damage_score:.1f} | {status}"
-        (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
-        cv2.rectangle(img, (bx1, by1 - 25), (bx1 + tw, by1), color, -1)
-        cv2.putText(img, label_text, (bx1, by1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        font_scale = max(0.4, min(1.2, img.shape[1] / 1000))
+        thickness = max(1, int(font_scale * 2))
+        (tw, th), _ = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+        cv2.rectangle(img, (bx1, by1), (bx1 + tw, by1 + th + 10), color, -1)
+        cv2.putText(img, label_text, (bx1, by1 + th + 5), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness)
 
         # ── 결함 바운딩박스 ───────────────────────────────────
         for damage in b_info['damages']:
             dx1, dy1, dx2, dy2 = map(int, damage['bbox'])
             class_name = model_names.get(damage['class_id'], f"ID:{damage['class_id']}")
-            cv2.rectangle(img, (dx1, dy1), (dx2, dy2), (0, 255, 255), 2)
-            cv2.putText(img, f"{class_name} {damage['score']:.2f}", (dx1, dy1 - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+            cv2.rectangle(img, (dx1, dy1), (dx2, dy2), (0, 0, 255), 2)
+            cv2.putText(img, class_name, (dx1, dy1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
 
         # ── 정상 구멍 바운딩박스 ──────────────────────────────
         for nh in b_info['normal_holes']:
             nx1, ny1, nx2, ny2 = map(int, nh['bbox'])
             cv2.rectangle(img, (nx1, ny1), (nx2, ny2), (255, 255, 0), 1)
-            cv2.putText(img, "normal_hole", (nx1, ny1 - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+            cv2.putText(img, "normal_hole", (nx1, ny1 - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
 
-    output_filename = f"result_{os.path.basename(image_path)}"
+    output_dir = "DAMAGE_SCORE_test_results"
+    os.makedirs(output_dir, exist_ok=True)
+    output_filename = os.path.join(output_dir, f"result_{os.path.basename(image_path)}")
     cv2.imwrite(output_filename, img)
     print(f"\n결과 이미지 저장 완료: '{output_filename}' (박스: {len(boxes_info)}개)")
-
-    # 화면에 바로 띄우기
-    cv2.imshow("Result", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="택배 파손 추론 스크립트")
