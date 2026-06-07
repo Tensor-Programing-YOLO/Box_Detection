@@ -4,7 +4,7 @@ import argparse
 from main import main as inference_main
 
 #하단 복붙해서 실행하시면 돌아갑니다.
-#python test.py --weights runs/detect/results/yolov8m_300epoch_augmented_hypertuned/weights/best.pt --dir dataset/images/val --conf 0.1
+#python test.py --weights runs/detect/results/yolov8m_300epoch_augmented_hypertuned/weights/best.pt --dir dataset/images/val --conf 0.05
 
 def batch_test(weights_path, img_dir, conf, threshold):
     # 지원하는 이미지 확장자

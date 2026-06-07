@@ -5,18 +5,31 @@ import yaml
 
 def get_class_counts(label_dir):
     counts = Counter()
-    label_files = list(Path(label_dir).glob("*.txt"))
+    label_path = Path(label_dir)
+    if not label_path.exists():
+        print(f"Error: Label directory not found at '{label_dir}'")
+        return counts, 0
+    
+    label_files = list(label_path.glob("*.txt"))
     for label_file in label_files:
         with open(label_file, "r", encoding="utf-8") as f:
             for line in f:
                 parts = line.strip().split()
                 if parts:
-                    class_id = int(parts[0])
-                    counts[class_id] += 1
+                    try:
+                        class_id = int(parts[0])
+                        counts[class_id] += 1
+                    except (ValueError, IndexError):
+                        print(f"Warning: Skipping malformed line in {label_file}: {line.strip()}")
     return counts, len(label_files)
 
 def main():
-    with open("data.yaml", "r", encoding="utf-8") as f:
+    data_yaml_path = "data.yaml"
+    if not os.path.exists(data_yaml_path):
+        print(f"Error: '{data_yaml_path}' not found. Please ensure the file exists in the correct directory.")
+        return
+
+    with open(data_yaml_path, "r", encoding="utf-8") as f:
         data_config = yaml.safe_load(f)
     
     class_names = data_config.get("names", {})
