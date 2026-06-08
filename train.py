@@ -3,14 +3,14 @@ import torch
 from ultralytics import YOLO
 from pathlib import Path
 
-# ==============================================================================
+# ==============================================================================    
 # [1] USER CONFIGURATION (사용자 설정 변수)
 # ==============================================================================
 selected_weight = 'yolo11m.pt'     # 베이스 모델 가중치 (예: yolo11n.pt, yolo11m.pt)
-epochs = 150                         # 학습 반복 횟수
-batch_size = 16                    # 배치 사이즈
-img_size = 640                    # 입력 이미지 크기
-custom_tag = 'rainforced_data'          # 실험 고유 태그 (폴더명에 포함됨)
+epochs = 300                         # 학습 반복 횟수
+batch_size = 16                   # 배치 사이즈
+img_size = 640                  # 입력 이미지 크기
+custom_tag = 'mixed_v2_jaeunn+_conf'  # 실험 고유 태그 (폴더명에 포함됨)
 # ==============================================================================
 
 def main():
@@ -32,17 +32,40 @@ def main():
     results = model.train(
         data='data.yaml',
         epochs=epochs,
+        patience=50,
         batch=batch_size,
         imgsz=img_size,
         device=device,
-        seed=42,             # PyTorch, Numpy, Python 랜덤 시드를 42로 통일
+        # seed=42,             
         deterministic=True,
         project=project_dir,
         name=exp_path,
-        exist_ok=True, # 기존 폴더 덮어쓰기 허용 (여러 번 실행 시 파일 추가 방지)
-        # --- [물류 현장 최적화 하이퍼파라미터] ---
-        # mosaic=1.0 등을 여기에 추가할 수 있습니다.
-    )
+        exist_ok=True, 
+        
+        # # --- [기존 적용: 조도 조절] ---
+        # hsv_h=0.015,
+        # hsv_s=0.7,
+        # hsv_v=0.6,
+
+        # Threshold 조절
+        conf=0.15
+        
+        # # # --- [기하학 왜곡] ---
+        # perspective=0.001, # 카메라 시점
+        # shear=3.0, # 비틀림
+        # degrees=5.0, # 회전각도
+        # scale=0.2, # 상자의 높이 편차
+        
+        # # # --- [수정 1: 합성 Augmentation 조정] ---
+        # mixup=0.15,
+        # copy_paste=0.1,
+        # erasing=0.0,    # 🚀 치명적 에러 방지: 꼬마 박스가 지워지는 것을 막기 위해 비활성화
+
+        # # # --- [손실 함수(채점 기준) 극단적 미세 조정] ---
+        # # cls=3.0,             # "종류(crushed/tear) 헷갈리면 벌점 3배!"
+        # # box=7.5,             # "박스 위치 빗나가면 기본 벌점!"
+        # # dfl=2.0              # 🚀 [수정 2] "테두리 1픽셀이라도 어긋나면 벌점 2배! 정밀하게 쳐라!"
+        )
 
     # 2. 최적 가중치(best.pt) 자동 로드 및 검증 수행
     # model.train()의 결과 객체나 model.trainer에서 실제 저장 경로를 가져옵니다.
@@ -62,7 +85,7 @@ def main():
         verbose=False,
         project=project_dir,
         name=exp_path,
-        exist_ok=True
+        # exist_ok=True # 돌일폴더면 지우기
     )
 
     # 3. 클래스별 상세 성적표 데이터 추출 및 포맷팅
